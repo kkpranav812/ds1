@@ -1,0 +1,650 @@
+
+ALL EXPERIMENT CODES - Combined (Assembly and C)
+===============================================
+Author: Generated for user
+Note: Assembly programs are written for MASM/TASM and DOSBox (mode 13h graphics uses VGA). 
+C programs compile with: gcc filename.c -o prog
+
+------------------------
+1. ARITHMETIC OPERATIONS (8086 MASM)
+------------------------
+; addition_8bit.asm
+.MODEL SMALL
+.STACK 100h
+.DATA
+    VAR1 DW 0005h
+    VAR2 DW 0007h
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    MOV AX, VAR1
+    MOV BX, VAR2
+    ADD AX, BX        ; AX = VAR1 + VAR2
+    MOV DX, AX        ; result in DX
+    MOV CX, 0
+    ADC CX, 0         ; CX = carry
+    INT 03h
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+; subtraction_8bit.asm
+.MODEL SMALL
+.STACK 100h
+.DATA
+    VAR1 DW 0001h
+    VAR2 DW 0103h
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    MOV AX, VAR2
+    MOV BX, VAR1
+    SUB AX, BX
+    MOV DX, AX
+    INT 03h
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+; multiply_8bit.asm (8-bit mul -> result in AX)
+.MODEL SMALL
+.STACK 100h
+.DATA
+    VAR1 DB 03h
+    VAR2 DB 05h
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    MOV AL, VAR1
+    MUL VAR2          ; AL * VAR2 -> AX
+    MOV DX, AX
+    INT 03h
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+; divide_8bit.asm (16-bit divide example)
+.MODEL SMALL
+.STACK 100h
+.DATA
+    VAR1 DW 0006h
+    VAR2 DW 0002h
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    XOR DX, DX        ; ensure DX=0 for dividend in DX:AX
+    MOV AX, VAR1
+    DIV VAR2          ; AX=quotient, DX=remainder
+    INT 03h
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+------------------------
+2. STRING OPERATIONS (8086 MASM)
+------------------------
+; length_string.asm - using '$' terminated string
+.MODEL SMALL
+.STACK 100h
+.DATA
+    STRING1 DB 'HelloWorld$'
+.CODE
+LEN_PROC PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    LEA SI, STRING1
+    XOR CX, CX
+LEN_LOOP:
+    MOV AL, [SI]
+    CMP AL, '$'
+    JE LEN_DONE
+    INC CX
+    INC SI
+    JMP LEN_LOOP
+LEN_DONE:
+    ; CX contains length
+    INT 03h
+    RET
+LEN_PROC ENDP
+END
+
+; compare_strings.asm
+.MODEL SMALL
+.STACK 100h
+.DATA
+    STR1 DB 'Hello$'
+    STR2 DB 'Hello$'
+    RES_EQUAL DB 'STRING EQUAL$'
+    RES_NOT  DB 'STRING NOT EQUAL$'
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    LEA SI, STR1
+    LEA DI, STR2
+CMP_LOOP2:
+    MOV AL, [SI]
+    MOV BL, [DI]
+    CMP AL, BL
+    JNE NOT_EQ
+    CMP AL, '$'
+    JE EQUALS
+    INC SI
+    INC DI
+    JMP CMP_LOOP2
+NOT_EQ:
+    LEA DX, RES_NOT
+    MOV AH,09h
+    INT 21h
+    JMP END_P
+EQUALS:
+    LEA DX, RES_EQUAL
+    MOV AH,09h
+    INT 21h
+END_P:
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+; palindrome_check.asm
+.MODEL SMALL
+.STACK 100h
+.DATA
+    STR DB 'MADAM$'
+    MSG1 DB 'PALINDROME$'
+    MSG2 DB 'NOT PALINDROME$'
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    LEA SI, STR
+    LEA DI, STR
+    XOR CX, CX
+FIND_LEN2:
+    MOV AL, [DI]
+    CMP AL, '$'
+    JE LEN_FOUND2
+    INC DI
+    INC CX
+    JMP FIND_LEN2
+LEN_FOUND2:
+    DEC DI
+CHECKP:
+    CMP SI, DI
+    JAE IS_PAL
+    MOV AL, [SI]
+    MOV BL, [DI]
+    CMP AL, BL
+    JNE NOT_PAL
+    INC SI
+    DEC DI
+    JMP CHECKP
+IS_PAL:
+    LEA DX, MSG1
+    MOV AH,09h
+    INT 21h
+    JMP END_P2
+NOT_PAL:
+    LEA DX, MSG2
+    MOV AH,09h
+    INT 21h
+END_P2:
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+; length without buffer - using BIOS input (INT 21h AH=0Ah) style would require buffer format.
+; A simple 'without buffer' length (scan string until zero) already shown above.
+
+------------------------
+3. BLOCK OPERATIONS (MOVSB / XCHG)
+------------------------
+; block_copy_movsb.asm - copy src -> dest
+.MODEL SMALL
+.STACK 100h
+.DATA
+    src  DB 10h,20h,30h,40h,50h
+    dest DB 5 DUP(?)
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    MOV ES,AX
+    LEA SI, src
+    LEA DI, dest
+    MOV CX, 5
+    CLD
+    REP MOVSB
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+; block_swap_temp.asm - swap using temp buffer
+.MODEL SMALL
+.STACK 100h
+.DATA
+    block1 DB 11h,22h,33h,44h,55h
+    block2 DB 66h,77h,88h,99h,00h
+    temp   DB 5 DUP(?)
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    MOV ES,AX
+    LEA SI, block1
+    LEA DI, temp
+    MOV CX,5
+    CLD
+    REP MOVSB
+    LEA SI, block2
+    LEA DI, block1
+    MOV CX,5
+    CLD
+    REP MOVSB
+    LEA SI, temp
+    LEA DI, block2
+    MOV CX,5
+    CLD
+    REP MOVSB
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+; block_swap_xchg.asm - swap elements using XCHG
+.MODEL SMALL
+.STACK 100h
+.DATA
+    arr1 DB 11h,22h,33h,44h,55h
+    arr2 DB 66h,77h,88h,99h,0Ah
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+    MOV CX,5
+    LEA SI, arr1
+    LEA DI, arr2
+SWPLOOP:
+    MOV AL, [SI]
+    XCHG AL, [DI]
+    MOV [SI], AL
+    INC SI
+    INC DI
+    DEC CX
+    JNZ SWPLOOP
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+------------------------
+4. GRAPHICS (Mode 13h, direct video memory) - Combined shapes
+------------------------
+.model small
+.STACK 100H
+
+.CODE
+MAIN PROC
+
+MOV AX, @DATA
+MOV DS, AX
+
+; SET GRAPHIC
+MOV AH, 00
+MOV AL, 13h
+INT 10h
+
+; EXTRA SEGMENT IN VIDEO MEMORY
+MOV AX, 0A00H
+MOV ES, AX
+
+; INTIALISE CO-ODINATES
+MOV CX, 1
+MOV DX, 2
+MOV BL, 2 ; GREEN COLOR
+
+; DIAGONAL LINE
+MOV AX, 30h
+diagonal: call putpixal
+INC CX
+INC DX
+DEC AX
+JNZ diagonal
+
+;horizontal line
+MOV AX, 30h
+horizontal: call putpixal
+DEC CX
+DEC AX
+JNZ horizontal
+
+;vertical line
+MOV AX, 30h
+vertical: call putpixal
+DEC DX
+DEC AX
+JNZ vertical
+
+MOV AH, 0
+INT 16h
+
+; restore text mode
+MOV AH, 0
+MOV AL, 03H
+INT 10H
+
+;EXIT TO DOS 
+MOV AX, 4C00H
+INT 21H
+
+MAIN ENDP
+
+putpixal proc
+PUSH AX
+PUSH BX
+PUSH CX
+PUSH DX
+PUSH DI
+
+MOV AX, DX
+MOV BX, 320 
+MUL BX
+ADD AX, CX
+MOV DI, AX
+
+
+MOV ES: [DI], BL
+
+POP DI
+POP DX
+POP CX
+POP BX
+POP AX
+RET
+putpixal endp
+end main
+
+
+
+
+
+------------------------
+5. PASSWORD-BASED SYSTEM (masked input, 3 attempts) - assembly
+------------------------
+; short_password.asm
+.MODEL SMALL
+.STACK 100h
+.DATA
+    PASS   DB "SECRET$"
+    MSG1   DB "Enter Password: $"
+    OKMSG  DB "ACCESS GRANTED$"
+    ERRMSG DB "ACCESS DENIED$"
+    BUF    DB 20 DUP('$')
+    TRY    DB 3
+.CODE
+MAIN PROC
+    MOV AX,@DATA
+    MOV DS,AX
+TRY_AGAIN:
+    LEA DX, MSG1
+    MOV AH,09h
+    INT 21h
+    LEA DI, BUF
+READ_CHAR:
+    MOV AH,00h
+    INT 16h
+    CMP AL,0Dh
+    JE END_READ
+    MOV [DI],AL
+    INC DI
+    MOV DL,'*'
+    MOV AH,02h
+    INT 21h
+    JMP READ_CHAR
+END_READ:
+    MOV BYTE PTR [DI],'$'
+    LEA SI, PASS
+    LEA DI, BUF
+CMP_P:
+    MOV AL,[SI]
+    MOV BL,[DI]
+    CMP AL,BL
+    JNE WRONG
+    CMP AL,'$'
+    JE RIGHT
+    INC SI
+    INC DI
+    JMP CMP_P
+RIGHT:
+    LEA DX, OKMSG
+    MOV AH,09h
+    INT 21h
+    JMP EXIT_P
+WRONG:
+    DEC TRY
+    JNZ TRY_AGAIN
+    LEA DX, ERRMSG
+    MOV AH,09h
+    INT 21h
+EXIT_P:
+    MOV AH,4Ch
+    INT 21h
+MAIN ENDP
+END MAIN
+
+; Also included below is a simple Booth's multiplication in C for stepwise output.
+
+; booth_mul.c (simple console C program showing steps)
+#include <stdio.h>
+#include <stdint.h>
+
+int main() {
+    int16_t m, r;
+    int32_t a_q; // will hold A:Q combined (use 32-bit)
+    int count;
+    printf("Enter multiplicand (m): ");
+    scanf("%hd", &m);
+    printf("Enter multiplier (r): ");
+    scanf("%hd", &r);
+    int16_t Q = r;
+    int16_t M = m;
+    int8_t Q_1 = 0;
+    int32_t A = 0;
+    count = 16; // for 16-bit
+    printf("Initial: A=%d Q=%d Q-1=%d\n", A, Q, Q_1);
+    while (count--) {
+        int lsb = Q & 1;
+        if (lsb == 1 && Q_1 == 0) {
+            A = A - M;
+            printf("Subtract M: A=%d Q=%d Q-1=%d\n", A, Q, Q_1);
+        } else if (lsb == 0 && Q_1 == 1) {
+            A = A + M;
+            printf("Add M: A=%d Q=%d Q-1=%d\n", A, Q, Q_1);
+        }
+        // Arithmetic right shift of A,Q,Q-1
+        int newQ1 = Q & 1;
+        int signA = (A < 0) ? 1 : 0;
+        int combined = ((A << 16) | (Q & 0xFFFF));
+        combined >>= 1;
+        // extract new A and Q
+        A = (combined >> 16);
+        Q = (combined & 0xFFFF);
+        Q_1 = newQ1;
+        printf("Shift: A=%d Q=%d Q-1=%d\n", A, Q, Q_1);
+    }
+    int32_t product = (A << 16) | (Q & 0xFFFF);
+    printf("Product = %d\n", product);
+    return 0;
+}
+
+------------------------
+6. CACHE MAPPING TECHNIQUES (C)
+------------------------
+; cache_simulator.c - supports direct, fully associative, k-way set-associative (FIFO)
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct {
+    int valid;
+    int block_id;
+    int data;
+} CacheLine;
+
+typedef struct {
+    CacheLine *lines;
+    int fifo_index;
+} CacheSet;
+
+typedef struct {
+    CacheSet *sets;
+    int num_sets;
+    int num_ways;
+} Cache;
+
+void initializeCache(Cache *cache, int cache_size, int ways) {
+    cache->num_ways = ways;
+    cache->num_sets = cache_size / ways;
+    cache->sets = (CacheSet *)malloc(cache->num_sets * sizeof(CacheSet));
+    for (int i = 0; i < cache->num_sets; i++) {
+        cache->sets[i].lines = (CacheLine *)malloc(ways * sizeof(CacheLine));
+        cache->sets[i].fifo_index = 0;
+        for (int j = 0; j < ways; j++) {
+            cache->sets[i].lines[j].valid = 0;
+            cache->sets[i].lines[j].block_id = -1;
+            cache->sets[i].lines[j].data = 0;
+        }
+    }
+}
+
+int accessMemory(Cache *cache, int *main_memory, int block_id) {
+    int set_index = block_id % cache->num_sets;
+    CacheSet *current_set = &cache->sets[set_index];
+    int hit = 0;
+    for (int i = 0; i < cache->num_ways; i++) {
+        if (current_set->lines[i].valid && current_set->lines[i].block_id == block_id) {
+            hit = 1;
+            break;
+        }
+    }
+    if (!hit) {
+        int replace_idx = current_set->fifo_index;
+        int fetched_data = main_memory[block_id];
+        current_set->lines[replace_idx].block_id = block_id;
+        current_set->lines[replace_idx].data = fetched_data;
+        current_set->lines[replace_idx].valid = 1;
+        current_set->fifo_index = (replace_idx + 1) % cache->num_ways;
+    }
+    printf("%-5d | %-9d | %-3d | %-6s | [ ", block_id, set_index, block_id / cache->num_sets, hit ? "HIT" : "MISS");
+    for (int i = 0; i < cache->num_ways; i++) {
+        if (current_set->lines[i].valid)
+            printf("%d ", current_set->lines[i].block_id);
+        else
+            printf("- ");
+    }
+    printf("]\n");
+    return hit;
+}
+
+/* Complete main() and IO in the PDF; paste remaining if needed. */
+
+------------------------
+7. PAGE REPLACEMENT ALGORITHMS (C)
+------------------------
+; page_replacement.c - FIFO, LRU, Optimal
+#include <stdio.h>
+#include <stdbool.h>
+#define MAX 50
+
+int isPresent(int frames[], int n, int page) {
+    for (int i = 0; i < n; i++)
+        if (frames[i] == page)
+            return 1;
+    return 0;
+}
+
+int findLRU(int time[], int n) {
+    int min = time[0], pos = 0;
+    for (int i = 1; i < n; ++i)
+        if (time[i] < min) {
+            min = time[i];
+            pos = i;
+        }
+    return pos;
+}
+
+void FIFO(int pages[], int n, int framesCount) {
+    int frames[MAX], front = 0, pageFaults = 0, hits = 0;
+    for (int i = 0; i < framesCount; i++) frames[i] = -1;
+    for (int i = 0; i < n; i++) {
+        if (!isPresent(frames, framesCount, pages[i])) {
+            frames[front] = pages[i];
+            front = (front + 1) % framesCount;
+            pageFaults++;
+        } else hits++;
+    }
+    printf("\nFIFO Algorithm:\nTotal Page Faults: %d\nTotal Hits: %d\nHit Ratio: %.2f%%\n", pageFaults, hits, (hits*100.0)/n);
+}
+
+void LRU(int pages[], int n, int framesCount) {
+    int frames[MAX], time[MAX], counter=0, pageFaults=0, hits=0;
+    for (int i=0;i<framesCount;i++) frames[i] = -1, time[i]=0;
+    for (int i = 0; i < n; i++) {
+        if (isPresent(frames, framesCount, pages[i])) {
+            hits++;
+            for (int j=0;j<framesCount;j++) if (frames[j]==pages[i]) time[j]=++counter;
+        } else {
+            int pos = -1;
+            for (int j=0;j<framesCount;j++) if (frames[j]==-1) { pos=j; break; }
+            if (pos==-1) pos = findLRU(time, framesCount);
+            frames[pos] = pages[i];
+            time[pos] = ++counter;
+            pageFaults++;
+        }
+    }
+    printf("\nLRU Algorithm:\nTotal Page Faults: %d\nTotal Hits: %d\nHit Ratio: %.2f%%\n", pageFaults, hits, (hits*100.0)/n);
+}
+
+void Optimal(int pages[], int n, int framesCount) {
+    int frames[MAX], pageFaults = 0, hits = 0;
+    for (int i = 0; i < framesCount; i++) frames[i] = -1;
+    for (int i = 0; i < n; i++) {
+        if (isPresent(frames, framesCount, pages[i])) { hits++; continue; }
+        int pos = -1, farthest = i;
+        for (int j = 0; j < framesCount; j++) {
+            if (frames[j] == -1) { pos = j; break; }
+            int k;
+            for (k = i + 1; k < n; k++) if (frames[j] == pages[k]) break;
+            if (k == n) { pos = j; break; }
+            if (k > farthest) { farthest = k; pos = j; }
+        }
+        frames[pos] = pages[i];
+        pageFaults++;
+    }
+    printf("\nOptimal Algorithm:\nTotal Page Faults: %d\nTotal Hits: %d\nHit Ratio: %.2f%%\n", pageFaults, hits, (hits*100.0)/n);
+}
+
+int main() {
+    int n, framesCount, pages[MAX];
+    printf("Enter number of pages in reference string: ");
+    scanf("%d", &n);
+    printf("Enter the reference string: ");
+    for (int i = 0; i < n; i++) scanf("%d", &pages[i]);
+    printf("Enter number of frames: ");
+    scanf("%d", &framesCount);
+    FIFO(pages, n, framesCount);
+    LRU(pages, n, framesCount);
+    Optimal(pages, n, framesCount);
+    return 0;
+}
+
