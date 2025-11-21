@@ -539,76 +539,100 @@ int main() {
     return 0;
 }
 
-------------------------
-6. CACHE MAPPING TECHNIQUES (C)
-------------------------
-; cache_simulator.c - supports direct, fully associative, k-way set-associative (FIFO)
+-----------
+; Fully associative 
 #include <stdio.h>
-#include <stdlib.h>
 
-typedef struct {
-    int valid;
-    int block_id;
-    int data;
-} CacheLine;
+#define MAX 100
 
-typedef struct {
-    CacheLine *lines;
-    int fifo_index;
-} CacheSet;
+int main() {
+    int cache[MAX], cache_size;
+    int addr;
 
-typedef struct {
-    CacheSet *sets;
-    int num_sets;
-    int num_ways;
-} Cache;
+    printf("Enter cache size: ");
+    scanf("%d", &cache_size);
 
-void initializeCache(Cache *cache, int cache_size, int ways) {
-    cache->num_ways = ways;
-    cache->num_sets = cache_size / ways;
-    cache->sets = (CacheSet *)malloc(cache->num_sets * sizeof(CacheSet));
-    for (int i = 0; i < cache->num_sets; i++) {
-        cache->sets[i].lines = (CacheLine *)malloc(ways * sizeof(CacheLine));
-        cache->sets[i].fifo_index = 0;
-        for (int j = 0; j < ways; j++) {
-            cache->sets[i].lines[j].valid = 0;
-            cache->sets[i].lines[j].block_id = -1;
-            cache->sets[i].lines[j].data = 0;
-        }
-    }
-}
+    // Initialize cache lines as empty
+    for (int i = 0; i < cache_size; i++)
+        cache[i] = -1;
 
-int accessMemory(Cache *cache, int *main_memory, int block_id) {
-    int set_index = block_id % cache->num_sets;
-    CacheSet *current_set = &cache->sets[set_index];
-    int hit = 0;
-    for (int i = 0; i < cache->num_ways; i++) {
-        if (current_set->lines[i].valid && current_set->lines[i].block_id == block_id) {
-            hit = 1;
+    while (1) {
+        printf("\nEnter address (-1 to exit): ");
+        scanf("%d", &addr);
+
+        if (addr == -1)
             break;
+
+        int hit = 0;
+
+        // Check if address is already in cache (HIT)
+        for (int i = 0; i < cache_size; i++) {
+            if (cache[i] == addr) {
+                printf("HIT → %d found in line %d\n", addr, i);
+                hit = 1;
+                break;
+            }
+        }
+
+        if (!hit) {
+            // MISS: find first empty line or replace first line
+            int replaced = -1;
+            int placed = 0;
+            for (int i = 0; i < cache_size; i++) {
+                if (cache[i] == -1) {   // empty line
+                    cache[i] = addr;
+                    replaced = -1;
+                    placed = 1;
+                    printf("MISS → %d placed in empty line %d\n", addr, i);
+                    break;
+                }
+            }
+            if (!placed) {
+                replaced = cache[0];   // replace first line (FIFO)
+                cache[0] = addr;
+                printf("MISS → %d replaced %d in line 0\n", addr, replaced);
+            }
         }
     }
-    if (!hit) {
-        int replace_idx = current_set->fifo_index;
-        int fetched_data = main_memory[block_id];
-        current_set->lines[replace_idx].block_id = block_id;
-        current_set->lines[replace_idx].data = fetched_data;
-        current_set->lines[replace_idx].valid = 1;
-        current_set->fifo_index = (replace_idx + 1) % cache->num_ways;
-    }
-    printf("%-5d | %-9d | %-3d | %-6s | [ ", block_id, set_index, block_id / cache->num_sets, hit ? "HIT" : "MISS");
-    for (int i = 0; i < cache->num_ways; i++) {
-        if (current_set->lines[i].valid)
-            printf("%d ", current_set->lines[i].block_id);
-        else
-            printf("- ");
-    }
-    printf("]\n");
-    return hit;
+
+    return 0;
 }
+; direct associative 
+#include <stdio.h>
 
-/* Complete main() and IO in the PDF; paste remaining if needed. */
+#define MAX 100
 
+int main() {
+    int cache[MAX], cache_size;
+    int addr;
+
+    printf("Enter cache size: ");
+    scanf("%d", &cache_size);
+
+    // Initialize cache lines as empty
+    for (int i = 0; i < cache_size; i++)
+        cache[i] = -1;
+
+    while (1) {
+        printf("\nEnter address (-1 to exit): ");
+        scanf("%d", &addr);
+
+        if (addr == -1)
+            break;
+
+        int index = addr % cache_size;  // Direct mapping
+
+        if (cache[index] == addr)
+            printf("HIT → %d found in line %d\n", addr, index);
+        else {
+            printf("MISS → %d replaced %d in line %d\n",
+                   addr, cache[index], index);
+            cache[index] = addr;  // Replace
+        }
+    }
+
+    return 0;
+}
 ------------------------
 7. PAGE REPLACEMENT ALGORITHMS (C)
 ------------------------
