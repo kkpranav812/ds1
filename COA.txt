@@ -383,65 +383,116 @@ end main
 5. PASSWORD-BASED SYSTEM (masked input, 3 attempts) - assembly
 ------------------------
 ; short_password.asm
-.MODEL SMALL
-.STACK 100h
-.DATA
-    PASS   DB "SECRET$"
-    MSG1   DB "Enter Password: $"
-    OKMSG  DB "ACCESS GRANTED$"
-    ERRMSG DB "ACCESS DENIED$"
-    BUF    DB 20 DUP('$')
-    TRY    DB 3
-.CODE
-MAIN PROC
-    MOV AX,@DATA
-    MOV DS,AX
-TRY_AGAIN:
-    LEA DX, MSG1
-    MOV AH,09h
-    INT 21h
-    LEA DI, BUF
-READ_CHAR:
-    MOV AH,00h
-    INT 16h
-    CMP AL,0Dh
-    JE END_READ
-    MOV [DI],AL
-    INC DI
-    MOV DL,'*'
-    MOV AH,02h
-    INT 21h
-    JMP READ_CHAR
-END_READ:
-    MOV BYTE PTR [DI],'$'
-    LEA SI, PASS
-    LEA DI, BUF
-CMP_P:
-    MOV AL,[SI]
-    MOV BL,[DI]
-    CMP AL,BL
-    JNE WRONG
-    CMP AL,'$'
-    JE RIGHT
-    INC SI
-    INC DI
-    JMP CMP_P
-RIGHT:
-    LEA DX, OKMSG
-    MOV AH,09h
-    INT 21h
-    JMP EXIT_P
-WRONG:
-    DEC TRY
-    JNZ TRY_AGAIN
-    LEA DX, ERRMSG
-    MOV AH,09h
-    INT 21h
-EXIT_P:
-    MOV AH,4Ch
-    INT 21h
-MAIN ENDP
-END MAIN
+..model small
+.stack 100h
+
+.data
+str         db 'Enter the password : $'
+str1        db 'badak$'               ; Correct password
+BUFFER      db 20,?,20 dup('$')        ; Input buffer (no backspace)
+r1          db 0dh,0ah,'Password is matched.$'
+r2          db 0dh,0ah,'Password is not matched.$'
+r3          db 0dh,0ah,'Too many attempts. Exiting...$'
+star        db '*$'
+newline     db 0dh,0ah,'$'
+attempts    db 3
+
+.code
+main proc
+    mov ax, @data
+    mov ds, ax
+
+try_again:
+
+    ; Print prompt
+    lea dx, str
+    mov ah, 09h
+    int 21h
+
+    ; DI points to buffer
+    lea di, BUFFER
+
+read_loop:
+    mov ah, 00h
+    int 16h               ; Read character in AL
+
+    cmp al, 0Dh           ; Enter pressed?
+    je end_input
+
+    mov [di], al          ; Store char
+    inc di
+
+    ; Print '*'
+    lea dx, star
+    mov ah, 09h
+    int 21h
+
+    jmp read_loop
+
+end_input:
+    mov al, '$'
+    mov [di], al          ; End password with '$'
+
+    ; Print new line
+    lea dx, newline
+    mov ah, 09h
+    int 21h
+
+    ; Compare password
+    lea si, str1
+    lea di, BUFFER
+
+compare_loop:
+    mov al, [si]
+    mov bl, [di]
+
+    cmp al, '$'
+    je check_end
+
+    cmp al, bl
+    jne not_equal
+
+    inc si
+    inc di
+    jmp compare_loop
+
+check_end:
+    cmp bl, '$'
+    jne not_equal
+    jmp equal
+
+equal:
+    lea dx, r1
+    mov ah, 09h
+    int 21h
+    jmp exit_program
+
+not_equal:
+    dec attempts
+    lea dx, r2
+    mov ah, 09h
+    int 21h
+
+    cmp attempts, 0
+    je too_many
+
+    lea dx, newline
+    mov ah, 09h
+    int 21h
+
+    jmp try_again
+
+too_many:
+    lea dx, r3
+    mov ah, 09h
+    int 21h
+
+exit_program:
+    mov ah,4ch
+    int 21h
+
+main endp
+end main
 
 ; Also included below is a simple Booth's multiplication in C for stepwise output.
 
